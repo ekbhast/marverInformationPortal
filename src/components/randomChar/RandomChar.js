@@ -2,6 +2,7 @@ import { Component } from 'react';
 
 import './randomChar.scss';
 import mjolnir from '../../resources/img/mjolnir.png';
+import Spinner from '../spiner/Spinner';
 import MarvelService from '../../services/MarvelService';
 
 class RandomChar extends Component {
@@ -11,26 +12,36 @@ class RandomChar extends Component {
     }
 
     state = {
-        name: null,
-        description: null,
-        thumbnail: null,
-        homepage: null,
-        wiki: null
+        char: {},
+        loading: true
     }
 
     marvelService = new MarvelService();
+
+    onCharLoaded = (char) => {
+        this.setState({char})
+    }
 
     updateChar = () => {
         const id = Math.floor(Math.random() * (1011400 - 1011000) + 1011000);
         this.marvelService
             .getCharacter(id)
-            .then(res => {
-                this.setState(res)
-            })
+            .then(this.onCharLoaded);
     }
 
     render(){
-        const {name, description, thumbnail, homepage, wiki} = this.state;
+        let {char : {name, description, thumbnail, homepage, wiki}, loading} = this.state;
+
+        if (loading){
+            return <Spinner/>
+        }
+
+        if (!description){
+            description = 'Описание данного пресонажа будет добавлено позже';
+        } else if (description.length > 225) {
+            description = description.substr(0, 225) + `...`;
+            console.log(description.length);            
+        }
         return (
             <div className="randomchar">
                 <div className="randomchar__block">

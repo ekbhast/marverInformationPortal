@@ -42,12 +42,13 @@ class CharList extends Component{
     }
 
     generateListChars(chars){
-        let key = 0;
         const elements = chars.map(item => {
-            const {name, thumbnail} = item;
-            key++;
+            const {name, thumbnail, id} = item;
                 return (
-                    <li key={key} className="char__item">
+                    <li 
+                        key={id} 
+                        className="char__item"
+                        onClick={() => this.props.onCharSelected(id)}>
                         <img src={thumbnail} alt={name} style={thumbnail === 'http://i.annihil.us/u/prod/marvel/i/mg/b/40/image_not_available.jpg' ? {objectFit: 'contain'} : {objectFit: 'cover'} }/>
                         <div className="char__name">{name}</div>
                     </li>

@@ -1,5 +1,7 @@
 import './charList.scss';
 import { Component } from 'react';
+import PropTypes from 'prop-types';
+
 // import abyss from '../../resources/img/abyss.jpg';
 import Spinner from '../spiner/Spinner';
 import ErrorMessage from '../errorMessage/ErrorMessage';
@@ -12,7 +14,8 @@ class CharList extends Component{
         error: false,
         loading: true,
         newItemLoading: false,
-        offset: 210
+        offset: 210,
+        charEnded: false
     }
 
     marvelService = new MarvelService();
@@ -40,12 +43,19 @@ class CharList extends Component{
     }
 
     onCharsLoaded = (newChars) => {
+
+        let ended = false;
+        if(newChars.length < 9){
+            ended = true;
+        }
+
         this.setState (({offset, chars}) => ({
                 chars: [...chars, ...newChars],
                 loading: false,
                 error: false,
                 newItemLoading: false,
-                offset: offset + 9
+                offset: offset + 9,
+                charEnded: ended
         }))    
     }
 
@@ -73,7 +83,7 @@ class CharList extends Component{
     }
 
     render(){
-        const {chars, loading, error, offset, newItemLoading} = this.state;
+        const {chars, loading, error, offset, newItemLoading, charEnded} = this.state;
         const items = this.generateListChars(chars);
         const errorMessage = error ? <ErrorMessage/> : null;
         const spinner = loading ? <Spinner/> : null;
@@ -88,6 +98,7 @@ class CharList extends Component{
                 <button 
                     className="button button__main button__long"
                     disabled={newItemLoading}
+                    style={{'display' : charEnded ? 'none': 'block'}}
                     onClick={() => this.onRequest(offset)}
                     >
                     <div className="inner">load more</div>
@@ -96,6 +107,10 @@ class CharList extends Component{
         )
     }
     
+}
+
+CharList.propTypes = {
+    onCharSelected: PropTypes.func.isRequired
 }
 
 export default CharList;

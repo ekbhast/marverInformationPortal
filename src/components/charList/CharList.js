@@ -1,134 +1,114 @@
-import './charList.scss';
-import { Component } from 'react';
+import {useState, useEffect, useRef} from 'react';
 import PropTypes from 'prop-types';
 
-// import abyss from '../../resources/img/abyss.jpg';
-import Spinner from '../spiner/Spinner';
+import Spinner from '../spinner/Spinner';
 import ErrorMessage from '../errorMessage/ErrorMessage';
-import MarvelService from '../../services/MarvelService';
+import useMarvelService from '../../services/MarvelService';
+import './charList.scss';
 
-class CharList extends Component{
+const CharList = (props) => {
 
-    state = {
-        chars: [],
-        error: false,
-        loading: true,
-        newItemLoading: false,
-        offset: 210,
-        charEnded: false
+    const [charList, setCharList] = useState([]);
+    const [newItemLoading, setNewItemLoading] = useState(false);
+    const [offset, setOffset] = useState(210);
+    const [charEnded, setCharEnded] = useState(false);
+    
+    const {loading, error, getAllCharacters} = useMarvelService();
+
+    useEffect(() => {
+        onRequest(offset, true);
+    }, [])
+
+    const onRequest = (offset, initial) => {
+        initial ? setNewItemLoading(false) : setNewItemLoading(true);
+        getAllCharacters(offset)
+            .then(onCharListLoaded) 
     }
 
-    myRef = null;
-
-    marvelService = new MarvelService();
-
-    componentDidMount(){
-        this.updateChars();
-    }
-
-    onRequest = (offset) => {
-        this.updateChars(offset)
-    }
-
-    onCharListLoading = () => {
-        this.setState({
-            newItemLoading: true
-        })
-    }
-
-    updateChars = (offset) => {
-        this.onCharListLoading();
-        this.marvelService
-            .getAllCharacters(offset)
-            .then(this.onCharsLoaded)
-            .catch(this.onError);
-    }
-
-    onCharsLoaded = (newChars) => {
-
+    const onCharListLoaded = (newCharList) => {
         let ended = false;
-        if(newChars.length < 9){
+        if (newCharList.length < 9) {
             ended = true;
         }
 
-        this.setState (({offset, chars}) => ({
-                chars: [...chars, ...newChars],
-                loading: false,
-                error: false,
-                newItemLoading: false,
-                offset: offset + 9,
-                charEnded: ended
-        }))    
+        setCharList(charList => [...charList, ...newCharList]);
+        setNewItemLoading(newItemLoading => false);
+        setOffset(offset => offset + 9);
+        setCharEnded(charEnded => ended);
     }
 
-    onError = () => {
-        this.setState({
-            loading: false,
-            error: true
-        })
+    const itemRefs = useRef([]);
+
+    const focusOnItem = (id) => {
+        // Я реализовал вариант чуть сложнее, и с классом и с фокусом
+        // Но в теории можно оставить только фокус, и его в стилях использовать вместо класса
+        // На самом деле, решение с css-классом можно сделать, вынеся персонажа
+        // в отдельный компонент. Но кода будет больше, появится новое состояние
+        // и не факт, что мы выиграем по оптимизации за счет бОльшего кол-ва элементов
+
+        // По возможности, не злоупотребляйте рефами, только в крайних случаях
+        itemRefs.current.forEach(item => item.classList.remove('char__item_selected'));
+        itemRefs.current[id].classList.add('char__item_selected');
+        itemRefs.current[id].focus();
     }
 
-    setFocusRef = elem => {
-        if (this.myRef){
-            this.myRef.classList.remove('char__item_selected');
-        }        
-        this.myRef = elem;
-        this.myRef.classList.add('char__item_selected');
-
-    }
-
-    generateListChars(chars){
-        const elements = chars.map(item => {
-            const {name, thumbnail, id} = item;
-                return (
-                    <li 
-                        key={id} 
-                        tabIndex={0}
-                        className="char__item"
-                        onClick={(event) => {
-                            this.props.onCharSelected(id); 
-                            this.setFocusRef(event.currentTarget, id);
-                           }}
-                           onKeyDown={(e) => {
-                            if (e.key === ' ' || e.key === "Enter") {
-                                this.props.onCharSelected(item.id);
-                                this.setFocusRef(e.currentTarget)
-                            }}}   
-                        >
-                        
-                        <img src={thumbnail} alt={name} style={thumbnail === 'http://i.annihil.us/u/prod/marvel/i/mg/b/40/image_not_available.jpg' ? {objectFit: 'contain'} : {objectFit: 'cover'} }/>
-                        <div className="char__name">{name}</div>
-                    </li>
-                    )
-            })
-            return elements;
-    }
-
-    render(){
-        const {chars, loading, error, offset, newItemLoading, charEnded} = this.state;
-        const items = this.generateListChars(chars);
-        const errorMessage = error ? <ErrorMessage/> : null;
-        const spinner = loading ? <Spinner/> : null;
-        const content = !(loading || error) ? items : null;
+    // Этот метод создан для оптимизации, 
+    // чтобы не помещать такую конструкцию в метод render
+    function renderItems(arr) {
+        const items =  arr.map((item, i) => {
+            let imgStyle = {'objectFit' : 'cover'};
+            if (item.thumbnail === 'http://i.annihil.us/u/prod/marvel/i/mg/b/40/image_not_available.jpg') {
+                imgStyle = {'objectFit' : 'unset'};
+            }
+            
+            return (
+                <li 
+                    className="char__item"
+                    tabIndex={0}
+                    ref={el => itemRefs.current[i] = el}
+                    key={item.id}
+                    onClick={() => {
+                        props.onCharSelected(item.id);
+                        focusOnItem(i);
+                    }}
+                    onKeyPress={(e) => {
+                        if (e.key === ' ' || e.key === "Enter") {
+                            props.onCharSelected(item.id);
+                            focusOnItem(i);
+                        }
+                    }}>
+                        <img src={item.thumbnail} alt={item.name} style={imgStyle}/>
+                        <div className="char__name">{item.name}</div>
+                </li>
+            )
+        });
+        // А эта конструкция вынесена для центровки спиннера/ошибки
         return (
-            <div className="char__list">
-                <ul className="char__grid">
-                    {errorMessage}
-                    {spinner}
-                    {content}
-                </ul>
-                <button 
-                    className="button button__main button__long"
-                    disabled={newItemLoading}
-                    style={{'display' : charEnded ? 'none': 'block'}}
-                    onClick={() => this.onRequest(offset)}
-                    >
-                    <div className="inner">load more</div>
-                </button>
-            </div>
+            <ul className="char__grid">
+                {items}
+            </ul>
         )
     }
     
+    const items = renderItems(charList);
+
+    const errorMessage = error ? <ErrorMessage/> : null;
+    const spinner = loading && !newItemLoading ? <Spinner/> : null;
+
+    return (
+        <div className="char__list">
+            {errorMessage}
+            {spinner}
+            {items}
+            <button 
+                className="button button__main button__long"
+                disabled={newItemLoading}
+                style={{'display': charEnded ? 'none' : 'block'}}
+                onClick={() => onRequest(offset)}>
+                <div className="inner">load more</div>
+            </button>
+        </div>
+    )
 }
 
 CharList.propTypes = {

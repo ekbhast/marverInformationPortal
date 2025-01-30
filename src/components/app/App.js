@@ -34,19 +34,13 @@ const App = () => {
                                 <ComicsPage/>
                             } 
                         />
-                        <Route 
-                            path="/comics/:comicId" 
-                            element={
-                                <SinglePage Component={SingleComicLayout} dataType='comic'/>
-                            } 
-                        />
-                         <Route exact path="/comics/:id"
+                         <Route path="/comics/:id"
                             element={
                                 <SinglePage Component={SingleComicLayout} dataType='comic'/>
                             }
                             />           
                                 
-                        <Route exact path="/characters/:id"
+                        <Route path="/characters/:id"
                             element={
                                 <SinglePage Component={SingleCharacterLayout} dataType='character'/>
                             }
